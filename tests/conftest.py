@@ -64,7 +64,7 @@ def _get_client(cls, request, **kwargs):
                 # handle cases where a test disconnected a client
                 # just manually retry the flushdb
                 client.flushdb()
-            client.connection_pool.disconnect()
+            client.connection_pool.disconnect(immediate=True)
         request.addfinalizer(teardown)
     return client
 
