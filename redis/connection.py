@@ -1116,7 +1116,11 @@ class BlockingConnectionPool(ConnectionPool):
 
         # Create and fill up a thread safe queue with ``None`` values.
         self.pool = self.queue_class(self.max_connections)
-        self._fill_pool()
+        while True:
+            try:
+                self.pool.put_nowait(None)
+            except Full:
+                break
 
         # Keep a list of actual connection instances so that we can
         # disconnect them later.
@@ -1125,6 +1129,7 @@ class BlockingConnectionPool(ConnectionPool):
     def make_connection(self):
         "Make a fresh connection."
         connection = self.connection_class(**self.connection_kwargs)
+        connection.pool_generation = self.generation
         self._connections.append(connection)
         return connection
 
@@ -1212,10 +1217,6 @@ class BlockingConnectionPool(ConnectionPool):
         if immediate:
             for connection in self._connections:
                 connection.disconnect()
-
-            self._connections[:] = []
-            self._drain_pool()
-            self._fill_pool()
 
     def _remove_connection(self, connection):
         "Remove a connection from the list of connections."
