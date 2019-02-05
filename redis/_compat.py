@@ -13,20 +13,6 @@ if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and
     # Adapted from https://bugs.python.org/review/23863/patch/14532/54418
     import socket
     import time
-    import errno
-
-    from select import select as _select
-
-    def select(rlist, wlist, xlist, timeout):
-        while True:
-            try:
-                return _select(rlist, wlist, xlist, timeout)
-            except InterruptedError as e:
-                # Python 2 does not define InterruptedError, instead
-                # try to catch an OSError with errno == EINTR == 4.
-                if getattr(e, 'errno', None) == getattr(errno, 'EINTR', 4):
-                    continue
-                raise
 
     # Wrapper for handling interruptable system calls.
     def _retryable_call(s, func, *args, **kwargs):
@@ -73,8 +59,6 @@ if sys.version_info[0] < 3 or (sys.version_info[0] == 3 and
         return _retryable_call(sock, sock.recv_into, *args, **kwargs)
 
 else:  # Python 3.5 and above automatically retry EINTR
-    from select import select
-
     def recv(sock, *args, **kwargs):
         return sock.recv(*args, **kwargs)
 
