@@ -558,7 +558,7 @@ class Connection(object):
             # and the child inherited the socket, it's not safe to
             # call .shutdown(). Just close() the socket and let the OS
             # close the connection when appropriate.
-            if os.getpid() == self.pid and not self.fork_safe:
+            if not self.fork_safe or os.getpid() == self.pid:
                 self._sock.shutdown(socket.SHUT_RDWR)
             self._sock.close()
         except socket.error:
@@ -975,7 +975,6 @@ class ConnectionPool(object):
                     # another thread already did the work while we waited
                     # on the lock.
                     return
-                self.disconnect()
                 self.reset()
 
     def get_connection(self, command_name, *keys, **options):
