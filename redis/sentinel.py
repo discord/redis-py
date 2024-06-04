@@ -60,12 +60,14 @@ class SentinelManagedConnection(Connection):
         *,
         disconnect_on_error: Optional[bool] = False,
         push_request: Optional[bool] = False,
+        enable_additional_debug: Optional[bool] = False,
     ):
         try:
             return super().read_response(
                 disable_decoding=disable_decoding,
                 disconnect_on_error=disconnect_on_error,
                 push_request=push_request,
+                enable_additional_debug=enable_additional_debug,
             )
         except ReadOnlyError:
             if self.connection_pool.is_master:

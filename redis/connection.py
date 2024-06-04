@@ -5,6 +5,7 @@ import ssl
 import sys
 import threading
 import weakref
+import logging
 from abc import abstractmethod
 from itertools import chain
 from queue import Empty, Full, LifoQueue
@@ -34,6 +35,8 @@ from .utils import (
     get_lib_version,
     str_if_bytes,
 )
+
+logger = logging.getLogger(__name__)
 
 if HIREDIS_AVAILABLE:
     import hiredis
@@ -387,17 +390,19 @@ class AbstractConnection:
         try:
             # set the library name and version
             if self.lib_name:
+                logger.info('Attempting to set lib-name client info')
                 self.send_command("CLIENT", "SETINFO", "LIB-NAME", self.lib_name)
-                self.read_response()
-        except ResponseError:
-            pass
+                self.read_response(enable_additional_debug=True)
+        except ResponseError as re:
+            logger.exception('Error setting redis connection library name', exc_info=re)
 
         try:
             if self.lib_version:
+                logger.info('Attempting to set lib-version client info')
                 self.send_command("CLIENT", "SETINFO", "LIB-VER", self.lib_version)
-                self.read_response()
-        except ResponseError:
-            pass
+                self.read_response(enable_additional_debug=True)
+        except ResponseError as re:
+            logger.exception('Error setting redis connection lib_version', exc_info=re)
 
         # if a database is specified, switch to it
         if self.db:
@@ -407,7 +412,11 @@ class AbstractConnection:
 
     def disconnect(self, *args):
         "Disconnects from the Redis server"
-        self._parser.on_disconnect()
+        try:
+            self._parser.on_disconnect()
+        except BaseException as be:
+            logger.exception('Exception calling parser on_disconnect()', exc_info=be)
+            raise be
 
         conn_sock = self._sock
         self._sock = None
@@ -498,6 +507,7 @@ class AbstractConnection:
         *,
         disconnect_on_error=True,
         push_request=False,
+        enable_additional_debug=False,
     ):
         """Read the response from a previously sent command"""
 
@@ -505,26 +515,36 @@ class AbstractConnection:
 
         try:
             if self.protocol in ["3", 3] and not HIREDIS_AVAILABLE:
+                if enable_additional_debug:
+                    logger.info('Parsing redis response (HIREDIS MISSING)')
                 response = self._parser.read_response(
                     disable_decoding=disable_decoding, push_request=push_request
                 )
             else:
+                if enable_additional_debug:
+                    logger.info('Parsing redis response (HIREDIS PRESENT)')
                 response = self._parser.read_response(disable_decoding=disable_decoding)
-        except socket.timeout:
+        except socket.timeout as ste:
             if disconnect_on_error:
+                if enable_additional_debug:
+                    logger.exception('Disconnecting due to redis response error', exc_info=ste)
                 self.disconnect()
             raise TimeoutError(f"Timeout reading from {host_error}")
-        except OSError as e:
+        except OSError as ose:
             if disconnect_on_error:
+                if enable_additional_debug:
+                    logger.exception('Disconnecting due to redis response error', exc_info=ose)
                 self.disconnect()
             raise ConnectionError(
-                f"Error while reading from {host_error}" f" : {e.args}"
+                f"Error while reading from {host_error}" f" : {ose.args}"
             )
-        except BaseException:
+        except BaseException as be:
             # Also by default close in case of BaseException.  A lot of code
             # relies on this behaviour when doing Command/Response pairs.
             # See #1128.
             if disconnect_on_error:
+                if enable_additional_debug:
+                    logger.exception('Base exception during read response, disconnecting', exc_info=be)
                 self.disconnect()
             raise
 
@@ -532,6 +552,7 @@ class AbstractConnection:
             self.next_health_check = time() + self.health_check_interval
 
         if isinstance(response, ResponseError):
+            logger.exception('Parsed a response error in read_response', exc_info=response)
             try:
                 raise response
             finally:
