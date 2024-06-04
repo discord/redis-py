@@ -416,6 +416,7 @@ class AbstractConnection:
             self._parser.on_disconnect()
         except BaseException as be:
             logger.exception('Exception calling parser on_disconnect()', exc_info=be)
+            raise be
 
         conn_sock = self._sock
         self._sock = None
