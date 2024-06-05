@@ -394,7 +394,8 @@ class AbstractConnection:
                 self.send_command("CLIENT", "SETINFO", "LIB-NAME", self.lib_name)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
-            logger.exception('Error setting redis connection library name', exc_info=re)
+            if "SETINFO" not in response.message:
+                logger.exception('Error setting redis connection library name', exc_info=re)
 
         try:
             if self.lib_version:
@@ -402,7 +403,8 @@ class AbstractConnection:
                 self.send_command("CLIENT", "SETINFO", "LIB-VER", self.lib_version)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
-            logger.exception('Error setting redis connection lib_version', exc_info=re)
+            if "SETINFO" not in response.message:
+                logger.exception('Error setting redis connection lib_version', exc_info=re)
 
         # if a database is specified, switch to it
         if self.db:
