@@ -394,7 +394,8 @@ class AbstractConnection:
                 self.send_command("CLIENT", "SETINFO", "LIB-NAME", self.lib_name)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
-            logger.exception('Error setting redis connection library name', exc_info=re)
+            if "SETINFO" not in response.message:
+                logger.exception('Error setting redis connection library name', exc_info=re)
 
         try:
             if self.lib_version:
@@ -402,7 +403,8 @@ class AbstractConnection:
                 self.send_command("CLIENT", "SETINFO", "LIB-VER", self.lib_version)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
-            logger.exception('Error setting redis connection lib_version', exc_info=re)
+            if "SETINFO" not in response.message:
+                logger.exception('Error setting redis connection lib_version', exc_info=re)
 
         # if a database is specified, switch to it
         if self.db:
@@ -515,14 +517,10 @@ class AbstractConnection:
 
         try:
             if self.protocol in ["3", 3] and not HIREDIS_AVAILABLE:
-                if enable_additional_debug:
-                    logger.info('Parsing redis response (HIREDIS MISSING)')
                 response = self._parser.read_response(
                     disable_decoding=disable_decoding, push_request=push_request
                 )
             else:
-                if enable_additional_debug:
-                    logger.info('Parsing redis response (HIREDIS PRESENT)')
                 response = self._parser.read_response(disable_decoding=disable_decoding)
         except socket.timeout as ste:
             if disconnect_on_error:
@@ -533,7 +531,7 @@ class AbstractConnection:
         except OSError as ose:
             if disconnect_on_error:
                 if enable_additional_debug:
-                    logger.exception('Disconnecting due to redis response error', exc_info=ose)
+                    logger.exception('Disconnecting due to redis response os error', exc_info=ose)
                 self.disconnect()
             raise ConnectionError(
                 f"Error while reading from {host_error}" f" : {ose.args}"
@@ -552,7 +550,6 @@ class AbstractConnection:
             self.next_health_check = time() + self.health_check_interval
 
         if isinstance(response, ResponseError):
-            logger.exception('Parsed a response error in read_response', exc_info=response)
             try:
                 raise response
             finally:
