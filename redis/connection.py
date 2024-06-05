@@ -550,9 +550,6 @@ class AbstractConnection:
             self.next_health_check = time() + self.health_check_interval
 
         if isinstance(response, ResponseError):
-            # We want to log response errors from Redis but we don't care about this one currently
-            if "SETINFO" not in response.message:
-                logger.exception('Parsed a response error in read_response', exc_info=response)
             try:
                 raise response
             finally:
