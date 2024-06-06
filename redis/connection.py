@@ -50,6 +50,8 @@ DEFAULT_RESP_VERSION = 2
 
 SENTINEL = object()
 
+_SETINFO_ERROR = "Unknown subcommand or wrong number of arguments for 'SETINFO'"
+
 DefaultParser: Type[Union[_RESP2Parser, _RESP3Parser, _HiredisParser]]
 if HIREDIS_AVAILABLE:
     DefaultParser = _HiredisParser
@@ -394,7 +396,7 @@ class AbstractConnection:
                 self.send_command("CLIENT", "SETINFO", "LIB-NAME", self.lib_name)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
-            if "SETINFO" not in response.message:
+            if _SETINFO_ERROR not in str(re):
                 logger.exception('Error setting redis connection library name', exc_info=re)
 
         try:
@@ -403,7 +405,7 @@ class AbstractConnection:
                 self.send_command("CLIENT", "SETINFO", "LIB-VER", self.lib_version)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
-            if "SETINFO" not in response.message:
+            if _SETINFO_ERROR not in str(re):
                 logger.exception('Error setting redis connection lib_version', exc_info=re)
 
         # if a database is specified, switch to it
