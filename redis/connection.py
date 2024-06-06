@@ -392,7 +392,6 @@ class AbstractConnection:
         try:
             # set the library name and version
             if self.lib_name:
-                logger.info('Attempting to set lib-name client info')
                 self.send_command("CLIENT", "SETINFO", "LIB-NAME", self.lib_name)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
@@ -401,7 +400,6 @@ class AbstractConnection:
 
         try:
             if self.lib_version:
-                logger.info('Attempting to set lib-version client info')
                 self.send_command("CLIENT", "SETINFO", "LIB-VER", self.lib_version)
                 self.read_response(enable_additional_debug=True)
         except ResponseError as re:
